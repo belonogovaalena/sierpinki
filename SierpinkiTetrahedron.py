@@ -56,7 +56,8 @@ class SierpinskiTetrahedron:
         self.widget.addItem(x0y)
         self.traces = dict()
         # достаем из конфига координаты начала и толщину линии
-        coordinate = Coordinate(self.config.getint("tetrahedron", "x"), self.config.getint("tetrahedron", "y"))
+        coordinate = Coordinate(self.config.getint("tetrahedron", "x"), self.config.getint("tetrahedron", "y"),
+                                self.config.getint("tetrahedron", "z"))
         # получаем массивы точек для отрисовки
         items = self.draw_tetrahedron(coordinate, self.config.getint("tetrahedron", "side"))
         # и отображаем каждую линию
@@ -74,13 +75,18 @@ class SierpinskiTetrahedron:
         :return: Кортеж массивов точек для отрисовки
         """
         # вычисляем координаты вершин пирамиды
-        A = Coordinate(coordinate.x - side / 2, coordinate.y - math.sqrt(3) / 6 * side)
-        B = Coordinate(coordinate.x, coordinate.y + math.sqrt(3) / 3 * side)
-        C = Coordinate(coordinate.x + side/2, coordinate.y - math.sqrt(3) / 6 * side)
+        A = Coordinate(coordinate.x - side / 2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
+        B = Coordinate(coordinate.x, coordinate.y + math.sqrt(3) / 3 * side, coordinate.z)
+        C = Coordinate(coordinate.x + side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
+        D = Coordinate(coordinate.x, coordinate.y, coordinate.z + math.sqrt(2 / 3) * side)
+        # получаем координаты точек для сторон пирамиды
         AB = self._get_points_by_tops(A, B)
         BC = self._get_points_by_tops(B, C)
         CA = self._get_points_by_tops(C, A)
-        return AB, BC, CA
+        AD = self._get_points_by_tops(A, D)
+        BD = self._get_points_by_tops(B, D)
+        CD = self._get_points_by_tops(C, D)
+        return AB, BC, CA, AD, BD, CD
 
     def _get_points_by_tops(self, lower_point: Coordinate, upper_point: Coordinate):
         """
@@ -91,7 +97,7 @@ class SierpinskiTetrahedron:
         """
         x_line = np.linspace(lower_point.x, upper_point.x, 2)
         y_line = np.linspace(lower_point.y, upper_point.y, 2)
-        z_line = np.zeros(2)
+        z_line = np.linspace(lower_point.z, upper_point.z, 2)
         line = np.vstack([x_line, y_line, z_line]).transpose()
         return line
 
