@@ -17,6 +17,10 @@ class SierpinskiTetrahedron:
         # загружаем конфигурационный файл
         self.config = ConfigParser()
         self.config.read("config.ini")
+        # список фигур - объектов класса GLMeshItem
+        self.meshes = list()
+        # степень рекурсии - при нуле строится обычная пирамида
+        self.recursion_rate = self.config.getint("recurse", "recursion_rate") * 4 + 1
         # инициализируем базовый класс QApplication библиотеки PyQt5, передавая аргументом путь к файлу .py
         self.application = QtGui.QApplication(sys.argv)
         # создаем базовый виджет библиотеки PyOpenGL для отображения 3D - модели
@@ -58,16 +62,57 @@ class SierpinskiTetrahedron:
         # достаем из конфига координаты начала и толщину линии
         coordinate = Coordinate(self.config.getint("tetrahedron", "x"), self.config.getint("tetrahedron", "y"),
                                 self.config.getint("tetrahedron", "z"))
-        # получаем массивы точек для отрисовки
-        items = self.draw_tetrahedron(coordinate, self.config.getint("tetrahedron", "side"))
-        # и отображаем каждую линию
-        for i in range(len(items)):
-            self.traces[i] = gl.GLLinePlotItem(pos=items[i], color=pg.glColor(0, 83, 138, 255), width=10.0, antialias=True)
-            self.widget.addItem(self.traces[i])
+        # запускаем рекурсию
+        self.build_recursive(coordinate, self.config.getint("tetrahedron", "side"))
+        # отрисовываем каждую фигуру на графике
+        for mesh in self.meshes:
+            self.widget.addItem(mesh)
         # отображаем виджет
         self.widget.show()
 
-    def draw_tetrahedron(self, coordinate: Coordinate, side: float) -> tuple:
+    def build_recursive(self, coordinate: Coordinate, side: int):
+        # получаем массивы точек для отрисовки
+        points = self.get_coordinates(coordinate, side)
+        # точки A, B, C, D
+        vertex = np.array([
+            [points[0].x, points[0].y, points[0].z],
+            [points[1].x, points[1].y, points[1].z],
+            [points[2].x, points[2].y, points[2].z],
+            [points[3].x, points[3].y, points[3].z],
+        ])
+        # создаем грани ABC, ABD, ACD, BCD
+        faces = np.array([
+            [0, 1, 2],
+            [0, 1, 3],
+            [0, 2, 3],
+            [1, 2, 3]
+        ])
+        colors = np.array([
+            [1, 0, 0, 1.0],
+            [0, 1, 0, 1.0],
+            [0, 0, 1, 1.0],
+            [1, 1, 0, 1.0]
+        ])
+        self.recursion_rate -= 1
+        if self.recursion_rate // 4 > 0:
+            mesh = gl.GLMeshItem(vertexes=vertex, faces=faces, faceColors=colors, smooth=False, drawEdges=True,
+                                 drawFaces=False)
+            self.meshes.append(mesh)
+            side /= 2
+            circle_1 = Coordinate(coordinate.x - side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
+            circle_2 = Coordinate(coordinate.x + side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
+            circle_3 = Coordinate(coordinate.x, coordinate.y + math.sqrt(3) / 6 * side*2, coordinate.z)
+            circle_4 = Coordinate(coordinate.x, coordinate.y, coordinate.z + side * math.sqrt(2/3))
+            self.build_recursive(circle_1, side)
+            self.build_recursive(circle_2, side)
+            self.build_recursive(circle_3, side)
+            self.build_recursive(circle_4, side)
+        else:
+            mesh = gl.GLMeshItem(vertexes=vertex, faces=faces, faceColors=colors, smooth=False, drawEdges=True, drawFaces=True)
+            self.meshes.append(mesh)
+
+    @staticmethod
+    def get_coordinates(coordinate: Coordinate, side: float) -> tuple:
         """
         Вычисляет координаты точек сторон для отрисоки пирамиды
         :param coordinate: Координаты вписанной в основание пирамиды окружности
@@ -80,26 +125,7 @@ class SierpinskiTetrahedron:
         C = Coordinate(coordinate.x + side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
         D = Coordinate(coordinate.x, coordinate.y, coordinate.z + math.sqrt(2 / 3) * side)
         # получаем координаты точек для сторон пирамиды
-        AB = self._get_points_by_tops(A, B)
-        BC = self._get_points_by_tops(B, C)
-        CA = self._get_points_by_tops(C, A)
-        AD = self._get_points_by_tops(A, D)
-        BD = self._get_points_by_tops(B, D)
-        CD = self._get_points_by_tops(C, D)
-        return AB, BC, CA, AD, BD, CD
-
-    def _get_points_by_tops(self, lower_point: Coordinate, upper_point: Coordinate):
-        """
-        Вычисляет координаты точек стороны по двум вершинам треугольника
-        :param lower_point: Вершина треугольника
-        :param upper_point: Вершина треугольника
-        :return: Массив точек для отрисовки
-        """
-        x_line = np.linspace(lower_point.x, upper_point.x, 2)
-        y_line = np.linspace(lower_point.y, upper_point.y, 2)
-        z_line = np.linspace(lower_point.z, upper_point.z, 2)
-        line = np.vstack([x_line, y_line, z_line]).transpose()
-        return line
+        return A, B, C, D
 
     def start(self):
         if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
