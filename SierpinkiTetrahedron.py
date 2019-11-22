@@ -14,13 +14,13 @@ class SierpinskiTetrahedron:
         """
         Инициализация класса SierpinskiTetrahedron для отображения 3D - модели пирамиды Серпинского
         """
-        # загружаем конфигурационный файл
+        # загружаем конфигурационный файл и читаем его
         self.config = ConfigParser()
         self.config.read("config.ini")
-        # список фигур - объектов класса GLMeshItem
+        # список пирамид - объектов класса GLMeshItem
         self.meshes = list()
-        # степень рекурсии - при нуле строится обычная пирамида
-        self.recursion_rate = self.config.getint("recurse", "recursion_rate") * 4 + 1
+        # глубина рекурсии - при нуле строится обычная пирамида
+        self.recursion_rate = self.config.getint("recurse", "recursion_rate")
         # инициализируем базовый класс QApplication библиотеки PyQt5, передавая аргументом путь к файлу .py
         self.application = QtGui.QApplication(sys.argv)
         # создаем базовый виджет библиотеки PyOpenGL для отображения 3D - модели
@@ -59,10 +59,10 @@ class SierpinskiTetrahedron:
         # добавляем плоскость к виджету
         self.widget.addItem(x0y)
         self.traces = dict()
-        # достаем из конфига координаты начала и толщину линии
+        # достаем из конфига координаты центра пирамиды - он же центр вписанной в основание окружности
         coordinate = Coordinate(self.config.getint("tetrahedron", "x"), self.config.getint("tetrahedron", "y"),
                                 self.config.getint("tetrahedron", "z"))
-        # запускаем рекурсию
+        # запускаем рекурсию для построения пирамиды Серпинского
         self.build_recursive(coordinate, self.config.getint("tetrahedron", "side"))
         # отрисовываем каждую фигуру на графике
         for mesh in self.meshes:
@@ -71,6 +71,11 @@ class SierpinskiTetrahedron:
         self.widget.show()
 
     def build_recursive(self, coordinate: Coordinate, side: int):
+        """
+        Рекурсивная функция для построения пирамиды Серпинского
+        :param coordinate: кордината центра вписанной окружности в основание пирамиды
+        :param side: длина стороны пирамиды
+        """
         # получаем массивы точек для отрисовки
         points = self.get_coordinates(coordinate, side)
         # точки A, B, C, D
@@ -87,26 +92,34 @@ class SierpinskiTetrahedron:
             [0, 2, 3],
             [1, 2, 3]
         ])
+        # раскрашиваем их в цвета
         colors = np.array([
             [1, 0, 0, 1.0],
             [0, 1, 0, 1.0],
             [0, 0, 1, 1.0],
             [1, 1, 0, 1.0]
         ])
-        self.recursion_rate -= 1
-        if self.recursion_rate // 4 > 0:
+        # если пирамиды достаточной глубины рекурсии не построены - строим их незакрашенными
+        if self.recursion_rate > 0:
+            self.recursion_rate -= 1
             mesh = gl.GLMeshItem(vertexes=vertex, faces=faces, faceColors=colors, smooth=False, drawEdges=True,
                                  drawFaces=False)
+            # добавляем незакрашенную верхнеуровневую пирамиду-каркас к списку пирамиид
             self.meshes.append(mesh)
+            # строим четыре пирамиды внутри каркаса
             side /= 2
+            # находим координаты окружностей, вписанных в непоспостроенные пока еще пирамиды внутри каркаса
             circle_1 = Coordinate(coordinate.x - side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
             circle_2 = Coordinate(coordinate.x + side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
             circle_3 = Coordinate(coordinate.x, coordinate.y + math.sqrt(3) / 6 * side*2, coordinate.z)
             circle_4 = Coordinate(coordinate.x, coordinate.y, coordinate.z + side * math.sqrt(2/3))
+            # для каждой пары - координаты окружности/деленная пополам длина ребра - вызываем рекурсивно функцию
             self.build_recursive(circle_1, side)
             self.build_recursive(circle_2, side)
             self.build_recursive(circle_3, side)
             self.build_recursive(circle_4, side)
+            self.recursion_rate += 1
+        # дошли до конца в рекурсии - красим пирамиду
         else:
             mesh = gl.GLMeshItem(vertexes=vertex, faces=faces, faceColors=colors, smooth=False, drawEdges=True, drawFaces=True)
             self.meshes.append(mesh)
@@ -114,7 +127,7 @@ class SierpinskiTetrahedron:
     @staticmethod
     def get_coordinates(coordinate: Coordinate, side: float) -> tuple:
         """
-        Вычисляет координаты точек сторон для отрисоки пирамиды
+        Вычисляет координаты вершины пирамиды
         :param coordinate: Координаты вписанной в основание пирамиды окружности
         :param side: Длина стороны
         :return: Кортеж массивов точек для отрисовки
@@ -124,7 +137,6 @@ class SierpinskiTetrahedron:
         B = Coordinate(coordinate.x, coordinate.y + math.sqrt(3) / 3 * side, coordinate.z)
         C = Coordinate(coordinate.x + side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
         D = Coordinate(coordinate.x, coordinate.y, coordinate.z + math.sqrt(2 / 3) * side)
-        # получаем координаты точек для сторон пирамиды
         return A, B, C, D
 
     def start(self):
