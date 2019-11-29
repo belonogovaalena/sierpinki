@@ -13,17 +13,34 @@ class SierpinskiTetrahedron:
         """
         Инициализация класса SierpinskiTetrahedron для отображения 3D - модели пирамиды Серпинского
         """
+        # инициализируем базовый класс QApplication библиотеки PyQt5, передавая аргументом путь к файлу .py
+        self.application = QtGui.QApplication(sys.argv)
         # загружаем конфигурационный файл и читаем его
         self.config = ConfigParser()
         self.config.read("config.ini")
+        # получаем глубину рекурсии - при нуле строится обычная пирамида
+        self.recursion_rate = self.config.getint("recurse", "recursion_rate")
         # список пирамид - объектов класса GLMeshItem
         self.meshes = list()
-        # глубина рекурсии - при нуле строится обычная пирамида
-        self.recursion_rate = self.config.getint("recurse", "recursion_rate")
-        # инициализируем базовый класс QApplication библиотеки PyQt5, передавая аргументом путь к файлу .py
-        self.application = QtGui.QApplication(sys.argv)
         # создаем базовый виджет библиотеки PyOpenGL для отображения 3D - модели
         self.widget = gl.GLViewWidget()
+        # инициализируем виджет
+        self.init_widget()
+        # достаем из конфига координаты центра пирамиды - он же центр вписанной в основание окружности
+        coordinate = Coordinate(self.config.getint("tetrahedron", "x"), self.config.getint("tetrahedron", "y"),
+                                self.config.getint("tetrahedron", "z"))
+        # запускаем рекурсию для построения пирамиды Серпинского
+        self.build_recursive(coordinate, self.config.getint("tetrahedron", "side"))
+        # отрисовываем каждую фигуру на графике
+        for mesh in self.meshes:
+            self.widget.addItem(mesh)
+        # отображаем виджет
+        self.widget.show()
+
+    def init_widget(self):
+        """
+        Инициализирует координатные плоскости виджета
+        """
         # устанавливаем значения расстояниия от камеры до центра
         self.widget.opts['distance'] = self.config.getint("widget", "distance")
         # устанавливаем заголовок окна
@@ -57,17 +74,6 @@ class SierpinskiTetrahedron:
         x0y.translate(0, 0, -10)
         # добавляем плоскость к виджету
         self.widget.addItem(x0y)
-        self.traces = dict()
-        # достаем из конфига координаты центра пирамиды - он же центр вписанной в основание окружности
-        coordinate = Coordinate(self.config.getint("tetrahedron", "x"), self.config.getint("tetrahedron", "y"),
-                                self.config.getint("tetrahedron", "z"))
-        # запускаем рекурсию для построения пирамиды Серпинского
-        self.build_recursive(coordinate, self.config.getint("tetrahedron", "side"))
-        # отрисовываем каждую фигуру на графике
-        for mesh in self.meshes:
-            self.widget.addItem(mesh)
-        # отображаем виджет
-        self.widget.show()
 
     def build_recursive(self, coordinate: Coordinate, side: int):
         """
@@ -138,11 +144,7 @@ class SierpinskiTetrahedron:
         D = Coordinate(coordinate.x, coordinate.y, coordinate.z + math.sqrt(2 / 3) * side)
         return A, B, C, D
 
-    def start(self):
-        if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-            QtGui.QApplication.instance().exec_()
-
 
 if __name__ == '__main__':
     tetrahedron = SierpinskiTetrahedron()
-    tetrahedron.start()
+    QtGui.QApplication.instance().exec_()
