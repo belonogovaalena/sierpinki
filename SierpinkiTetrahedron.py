@@ -82,7 +82,7 @@ class SierpinskiTetrahedron:
         :param side: длина стороны пирамиды
         """
         # получаем массивы точек для отрисовки
-        points = self.get_coordinates(coordinate, side)
+        points = self.get_tetrahedron_tops(coordinate, side)
         # точки A, B, C, D
         vertex = np.array([
             [points[0].x, points[0].y, points[0].z],
@@ -114,10 +114,7 @@ class SierpinskiTetrahedron:
             # строим четыре пирамиды внутри каркаса
             side /= 2
             # находим координаты окружностей, вписанных в непоспостроенные пока еще пирамиды внутри каркаса
-            circle_1 = Coordinate(coordinate.x - side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
-            circle_2 = Coordinate(coordinate.x + side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
-            circle_3 = Coordinate(coordinate.x, coordinate.y + math.sqrt(3) / 6 * side*2, coordinate.z)
-            circle_4 = Coordinate(coordinate.x, coordinate.y, coordinate.z + side * math.sqrt(2/3))
+            circle_1, circle_2, circle_3,  circle_4 = self.get_circle_center(coordinate, side)
             # для каждой пары - координаты окружности/деленная пополам длина ребра - вызываем рекурсивно функцию
             self.build_recursive(circle_1, side)
             self.build_recursive(circle_2, side)
@@ -130,19 +127,32 @@ class SierpinskiTetrahedron:
             self.meshes.append(mesh)
 
     @staticmethod
-    def get_coordinates(coordinate: Coordinate, side: float) -> tuple:
+    def get_tetrahedron_tops(coordinate: Coordinate, side: float) -> tuple:
         """
         Вычисляет координаты вершины пирамиды
         :param coordinate: Координаты вписанной в основание пирамиды окружности
         :param side: Длина стороны
         :return: Кортеж массивов точек для отрисовки
         """
-        # вычисляем координаты вершин пирамиды
         A = Coordinate(coordinate.x - side / 2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
         B = Coordinate(coordinate.x, coordinate.y + math.sqrt(3) / 3 * side, coordinate.z)
         C = Coordinate(coordinate.x + side/2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
         D = Coordinate(coordinate.x, coordinate.y, coordinate.z + math.sqrt(2 / 3) * side)
         return A, B, C, D
+
+    @staticmethod
+    def get_circle_center(coordinate: Coordinate, side: float) -> tuple:
+        """
+        Вычисляет координаты вершины пирамиды
+        :param coordinate: Координаты вписанной в основание пирамиды окружности
+        :param side: Длина стороны
+        :return: Кортеж точек
+        """
+        circle_1 = Coordinate(coordinate.x - side / 2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
+        circle_2 = Coordinate(coordinate.x + side / 2, coordinate.y - math.sqrt(3) / 6 * side, coordinate.z)
+        circle_3 = Coordinate(coordinate.x, coordinate.y + math.sqrt(3) / 6 * side * 2, coordinate.z)
+        circle_4 = Coordinate(coordinate.x, coordinate.y, coordinate.z + side * math.sqrt(2 / 3))
+        return circle_1, circle_2, circle_3, circle_4
 
 
 if __name__ == '__main__':
