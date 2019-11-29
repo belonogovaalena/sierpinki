@@ -1,7 +1,6 @@
 from configparser import ConfigParser
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
-import pyqtgraph as pg
 import numpy as np
 import math
 import sys
@@ -143,20 +142,7 @@ class SierpinskiTetrahedron:
         if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
             QtGui.QApplication.instance().exec_()
 
-    def set_plotdata(self, name, points, color, width):
-        self.traces[name].setData(pos=points, color=color, width=width)
 
-    def update(self):
-        self.set_plotdata(0, points=np.array([0, 10, 0]), color=pg.glColor(0, 83, 138), width=10.0)
-
-    def animation(self):
-        timer = QtCore.QTimer()
-        # timer.timeout.connect(self.update)
-        timer.start(20)
-        self.start()
-
-
-# Start Qt event loop unless running in interactive mode.
 if __name__ == '__main__':
     tetrahedron = SierpinskiTetrahedron()
-    tetrahedron.animation()
+    tetrahedron.start()
