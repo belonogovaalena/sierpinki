@@ -30,7 +30,7 @@ class SierpinskiTetrahedron:
         coordinate = Coordinate(self.config.getint("tetrahedron", "x"), self.config.getint("tetrahedron", "y"),
                                 self.config.getint("tetrahedron", "z"))
         # запускаем рекурсию для построения пирамиды Серпинского
-        self.build_recursive(coordinate, self.config.getint("tetrahedron", "side"))
+        self.build_recursive(coordinate, self.config.getint("tetrahedron", "side"), self.recursion_rate)
         # отрисовываем каждую фигуру на графике
         for mesh in self.meshes:
             self.widget.addItem(mesh)
@@ -75,11 +75,12 @@ class SierpinskiTetrahedron:
         # добавляем плоскость к виджету
         self.widget.addItem(x0y)
 
-    def build_recursive(self, coordinate: Coordinate, side: int):
+    def build_recursive(self, coordinate: Coordinate, side: int, n: int):
         """
         Рекурсивная функция для построения пирамиды Серпинского
         :param coordinate: кордината центра вписанной окружности в основание пирамиды
         :param side: длина стороны пирамиды
+        :param n: Параметр рекурсии
         """
         # получаем массивы точек для отрисовки
         points = self.get_tetrahedron_tops(coordinate, side)
@@ -105,8 +106,8 @@ class SierpinskiTetrahedron:
             [1, 1, 0, 1.0]
         ])
         # если пирамиды достаточной глубины рекурсии не построены - строим их незакрашенными
-        if self.recursion_rate > 0:
-            self.recursion_rate -= 1
+        if n > 0:
+            n -= 1
             mesh = gl.GLMeshItem(vertexes=vertex, faces=faces, faceColors=colors, smooth=False, drawEdges=True,
                                  drawFaces=False)
             # добавляем незакрашенную верхнеуровневую пирамиду-каркас к списку пирамиид
@@ -116,11 +117,11 @@ class SierpinskiTetrahedron:
             # находим координаты окружностей, вписанных в непоспостроенные пока еще пирамиды внутри каркаса
             circle_1, circle_2, circle_3,  circle_4 = self.get_circle_center(coordinate, side)
             # для каждой пары - координаты окружности/деленная пополам длина ребра - вызываем рекурсивно функцию
-            self.build_recursive(circle_1, side)
-            self.build_recursive(circle_2, side)
-            self.build_recursive(circle_3, side)
-            self.build_recursive(circle_4, side)
-            self.recursion_rate += 1
+            self.build_recursive(circle_1, side, n)
+            self.build_recursive(circle_2, side, n)
+            self.build_recursive(circle_3, side, n)
+            self.build_recursive(circle_4, side, n)
+            n += 1
         # дошли до конца в рекурсии - красим пирамиду
         else:
             mesh = gl.GLMeshItem(vertexes=vertex, faces=faces, faceColors=colors, smooth=False, drawEdges=True, drawFaces=True)
